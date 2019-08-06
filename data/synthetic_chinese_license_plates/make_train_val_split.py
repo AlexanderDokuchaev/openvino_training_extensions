@@ -23,11 +23,11 @@ def main():
 
   with open(os.path.join(annotation_dir, 'train'), 'w') as f:
     for line in annotations[:train_len]:
-      f.write(os.path.join(annotation_dir, line[0]) + ' ' + line[1] + '\n')
+      f.write(os.path.join(annotation_dir, line[0]).replace('\\', '\\\\').replace('/', '\\\\') + ' ' + line[1] + '\n')
 
   with open(os.path.join(annotation_dir, 'val'), 'w') as f:
     for line in annotations[train_len:]:
-      f.write(os.path.join(annotation_dir, line[0]) + ' ' + line[1] + '\n')
+      f.write(os.path.join(annotation_dir, line[0]).replace('\\', '\\\\').replace('/', '\\\\')  + ' ' + line[1] + '\n')
 
 
 if __name__ == '__main__':

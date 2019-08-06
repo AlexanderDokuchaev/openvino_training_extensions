@@ -155,7 +155,7 @@ class CTCUtils:
         x_val.append(val)
     x_shape = [batch_size, np.asarray(x_ix).max(0)[1] + 1]
 
-    return [np.array(x_ix), np.array(x_val), np.array(x_shape)]
+    return [np.array(x_ix).astype('int64'), np.array(x_val).astype('int64'), np.array(x_shape).astype('int64')]
 
   # Function for computing simple accuracy metric
   @staticmethod
@@ -167,7 +167,7 @@ class CTCUtils:
       encoded_label = encode(gt_label.decode('utf-8'), CTCUtils.vocab)
       encoded_gt_labels.append(encoded_label)
 
-    gt_labels = decode(np.array(encoded_gt_labels), CTCUtils.r_vocab)
+    gt_labels = decode(np.array(encoded_gt_labels).astype('int64'), CTCUtils.r_vocab)
 
     batch_size = len(gt_labels)
     mean_accuracy = 0.0
