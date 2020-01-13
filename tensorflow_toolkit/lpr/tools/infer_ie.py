@@ -23,7 +23,7 @@ import cv2
 from openvino.inference_engine import IENetwork, IEPlugin
 from lpr.trainer import decode_ie_output
 from tfutils.helpers import load_module
-
+import numpy as np
 
 def build_argparser():
   parser = ArgumentParser()
@@ -79,27 +79,29 @@ def load_ir_model(model_xml, device, plugin_dir, cpu_extension):
       sys.exit(1)
 
   # input / output check
-  assert len(net.inputs.keys()) == 1, "LPRNet must have only single input"
+  assert len(net.inputs.keys()) == 2, "LPRNet must have two input"
   assert len(net.outputs) == 1, "LPRNet must have only single output topologies"
 
-  input_blob = next(iter(net.inputs))
+  input_blobs = net.inputs.keys()
+  inputs = { b: net.inputs[b].shape for b in input_blobs}
+
   out_blob = next(iter(net.outputs))
+
   log.info("Loading IR to the plugin...")
   exec_net = plugin.load(network=net)
-  shape = net.inputs[input_blob].shape # pylint: disable=E1136
   del net
 
-  return exec_net, plugin, input_blob, out_blob, shape
+  return exec_net, plugin, input_blobs, out_blob, inputs
 
 
 def main():
   log.basicConfig(format="[ %(levelname)s ] %(message)s", level=log.INFO, stream=sys.stdout)
   args = build_argparser().parse_args()
   cfg = load_module(args.config)
-  exec_net, plugin, input_blob, out_blob, shape = load_ir_model(args.model, args.device,
+  exec_net, plugin, input_blob, out_blob, inputs = load_ir_model(args.model, args.device,
                                                                 args.plugin_dir, args.cpu_extension)
-  n_batch, channels, height, width = shape
-
+  print(inputs)
+  n_batch, channels, height, width = inputs['data']
 
   image = cv2.imread(args.input_image)
   img_to_display = image.copy()
@@ -107,7 +109,12 @@ def main():
   in_frame = in_frame.transpose((2, 0, 1))  # Change data layout from HWC to CHW
   in_frame = in_frame.reshape((n_batch, channels, height, width))
 
-  result = exec_net.infer(inputs={input_blob: in_frame})
+  ## second input is sequence, which is some relic from the training
+  ## it should have the leading 0.0f and rest 1.0f
+  seq_ind = np.ones(inputs['seq_ind'])
+  seq_ind[0][0] = 0
+
+  result = exec_net.infer(inputs={'data': in_frame, 'seq_ind': seq_ind})
   lp_code = result[out_blob][0]
   lp_number = decode_ie_output(lp_code, cfg.r_vocab)
   print('Output: {}'.format(lp_number))
